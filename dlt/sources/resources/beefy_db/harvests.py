@@ -4,7 +4,7 @@ from typing import Any
 from datetime import datetime, timezone
 import dlt
 from dlt.sources.sql_database import sql_table
-from lib.config import BATCH_SIZE, get_beefy_db_url
+from lib.config import BATCH_SIZE, get_beefy_timescaledb_url
 from lib.clickhouse import get_clickhouse_client
 from lib.postgres import connect_beefy_timescaledb
 from lib.sql_database import time_bounded_select, time_window_bounds
@@ -63,8 +63,7 @@ async def _init_resource() -> list[int]:
 async def get_beefy_db_harvests_resource() -> Any:
     chain_ids = await _init_resource()
 
-    # harvests is still on Heroku; chain_ids come from Timescale. Time bounds
-    # keep the Postgres scan on txn_timestamp.
+    # Time window is required so Timescale can exclude compressed chunks.
     def harvests_query_adapter_callback(query, table, incremental=None, engine=None):
         start_value, end_value = time_window_bounds(
             incremental,
@@ -83,7 +82,7 @@ async def get_beefy_db_harvests_resource() -> Any:
         )
         
     harvests = sql_table(
-        credentials=get_beefy_db_url(),
+        credentials=get_beefy_timescaledb_url(),
         table=RESOURCE_NAME,
         backend="pyarrow",
         chunk_size=BATCH_SIZE,

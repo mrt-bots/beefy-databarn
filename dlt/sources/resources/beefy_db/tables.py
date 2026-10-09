@@ -1,6 +1,6 @@
 from typing import Any
 from dlt.destinations.adapters import clickhouse_adapter
-from lib.config import BATCH_SIZE, get_beefy_db_url, get_beefy_timescaledb_url
+from lib.config import BATCH_SIZE, get_beefy_timescaledb_url
 from lib.sql_database import try_sql_table
 
 # Small lookup tables still on Heroku beefy-db.
@@ -57,6 +57,6 @@ def _table_resources(db_url: str, tables: dict[str, list[dict[str, Any]]]) -> li
 
 
 def get_beefy_db_other_tables_resources() -> list[Any]:
-    resources = _table_resources(get_beefy_db_url(), HEROKU_TABLES)
+    resources = _table_resources(get_beefy_timescaledb_url(), HEROKU_TABLES)
     resources.extend(_table_resources(get_beefy_timescaledb_url(), TIMESCALEDB_TABLES))
     return resources

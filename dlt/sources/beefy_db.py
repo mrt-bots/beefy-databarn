@@ -35,10 +35,8 @@ async def _optional_resource(
 async def beefy_db_source() -> Any:
     """Expose Beefy DB resources for use by dlt pipelines.
 
-    Hypertables ``prices``, ``apys``, ``tvls``, ``tvl_by_chain`` and lookups
-    ``chains``, ``price_oracles``, ``vault_ids`` are read from Tiger Cloud
-    Timescale. Remaining tables stay on Heroku beefy-db. ClickHouse destination
-    names and schemas are unchanged.
+    All beefy-db tables are read from Tiger Cloud Timescale. ClickHouse
+    destination names and schemas are unchanged.
     """
 
     candidates = [

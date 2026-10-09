@@ -2,7 +2,7 @@ from typing import Any
 
 from dlt.sources.sql_database import sql_table
 
-from lib.config import ZAP_BATCH_SIZE, get_beefy_db_url
+from lib.config import ZAP_BATCH_SIZE, get_beefy_timescaledb_url
 from lib.sql_database import hex_encode_bytea_columns
 
 
@@ -78,7 +78,7 @@ async def get_beefy_db_zap_parent_transactions_resource() -> Any:
 
     pk = [name for name, c in columns.items() if c.get("primary_key")]
     resource = sql_table(
-        credentials=get_beefy_db_url(),
+        credentials=get_beefy_timescaledb_url(),
         table="zap_parent_transactions",
         backend="pyarrow",
         chunk_size=ZAP_BATCH_SIZE,
