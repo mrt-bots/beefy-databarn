@@ -2,7 +2,7 @@
 # This Makefile provides commands for building images and managing the Docker Compose stack
 # Uses docker rollout plugin for no-downtime deployments
 
-.PHONY: help build ps logs deploy ensure-dirs restart dbt dlt clickhouse superset grafana gf run test client github_files tvls beefy_db beefy_api beefy_cctp_api loop docker reimport
+.PHONY: help build ps logs deploy ensure-dirs restart dbt dlt clickhouse superset grafana gf run test client github_files tvls beefy_db beefy_api beefy_cctp_api beefy_history loop docker reimport
 .DEFAULT_GOAL := help
 
 # Paths and common commands
@@ -22,7 +22,8 @@ DATA_DIRS := $(STORAGE_DIR)/clickhouse \
              $(STORAGE_DIR)/traefik_certs \
              $(STORAGE_DIR)/dbt \
              $(STORAGE_DIR)/dbt-docs \
-             $(STORAGE_DIR)/dlt
+             $(STORAGE_DIR)/dlt \
+             $(STORAGE_DIR)/beefy-history
 
 # Default target
 .DEFAULT_GOAL := help
@@ -361,7 +362,7 @@ dlt:
 			;; \
 		*) \
 			echo "Usage: make dlt [run [<pipeline>|all] [resource]|optimize|cleanup-pipeline-state|loop <source> <resource>|reimport <source> <resource> [<since>]|<action> <pipeline> <resource>|help]"; \
-			echo "  pipeline/source: e.g. beefy_db, beefy_api, github_files, beefy_cctp_api"; \
+			echo "  pipeline/source: e.g. beefy_db, beefy_api, github_files, beefy_cctp_api, beefy_history"; \
 			echo "  resource: e.g. zap_events, harvest_events, vaults, tokens"; \
 			echo "  action: info, show, failed-jobs, drop-pending-packages, trace, schema, load-package, mcp, drop, drop-state"; \
 			exit 1; \
@@ -499,7 +500,7 @@ docker:
 	esac
 
 # Prevent make from treating command arguments as targets
-run test client github_files tvls beefy_db beefy_api beefy_cctp_api logs restart ps start up info show failed-jobs drop-pending-packages sync trace schema load-package mcp drop drop-state reimport optimize cleanup-pipeline-state backup full incremental backup-status backup-restart restore version docs:
+run test client github_files tvls beefy_db beefy_api beefy_cctp_api beefy_history logs restart ps start up info show failed-jobs drop-pending-packages sync trace schema load-package mcp drop drop-state reimport optimize cleanup-pipeline-state backup full incremental backup-status backup-restart restore version docs:
 	@:
 
 # Catch-all for any other resource/source names

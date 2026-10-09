@@ -72,6 +72,7 @@ flowchart TB
     CH -.->|Native BACKUP/RESTORE| RUSTFS
     PYTHON -->|Query API| BEEFY_API
     PYTHON -->|Ingest Data| CH
+    PYTHON -->|CLI parquet| RUSTFS
     
     %% dbt Flow
     DBT -->|Creates Views & Tables| CH
@@ -134,7 +135,9 @@ flowchart TB
 
 - **Prometheus + Grafana**: Monitoring stack that collects metrics from all services and provides dashboards for infrastructure health, query performance, and system resources.
 
-- **RustFS**: S3-compatible object storage used as the ClickHouse `BACKUP`/`RESTORE` disk (swap `.env` to remote S3 later). dlt staging stays on local `file://`.
+- **RustFS**: S3-compatible object storage used as the ClickHouse `BACKUP`/`RESTORE` disk (bucket `clickhouse-backups`; swap `.env` to remote S3 later) and for beefy-history parquet (separate bucket `beefy-history/`). dlt staging stays on local `file://`.
+
+- **beefy-history**: a scheduled job next to dlt (not an HTTP dlt source) keeps git mirrors of beefy-app + beefy-v2, runs the pinned CLI to parquet, and publishes atomically to `beefy-history/current/`. dbt copies those files into MergeTree staging, then one fact mart (`product_config_history`) keyed to the existing `chain` / `product` / `platform` / `token` dimensions so [history.beefy.rodeo](https://history.beefy.rodeo) pages are recreated at query time. This catalog is **not** sourced from `api.beefy.finance`. See [dlt/beefy_history.md](dlt/beefy_history.md).
 
 - **Docker Swarm**: Container orchestration for production deployment, enabling high availability and service management across multiple nodes.
 
@@ -223,6 +226,11 @@ make [clickhouse|ch] restore BACKUP=inc-YYYY-MM-DD-HH
    # Or manually trigger from dbt container:
    docker exec -it <dbt-container> /app/run_dbt.sh
    ```
+
+Catalog history (git → parquet → RustFS, then `make dbt run`):
+```bash
+make dlt run beefy_history   # first run clones beefy-app + beefy-v2 (~450 MB)
+```
 
 **Production Management:**
 ```bash

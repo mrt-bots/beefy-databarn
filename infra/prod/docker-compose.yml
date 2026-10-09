@@ -65,6 +65,8 @@ services:
       CLICKHOUSE_BACKUP_S3_DISK_ENDPOINT: ${CLICKHOUSE_BACKUP_S3_DISK_ENDPOINT:-http://rustfs:9000/clickhouse-backups/}
       CLICKHOUSE_BACKUP_S3_ACCESS_KEY: ${CLICKHOUSE_BACKUP_S3_ACCESS_KEY:-${RUSTFS_ACCESS_KEY:-admin}}
       CLICKHOUSE_BACKUP_S3_SECRET_KEY: ${CLICKHOUSE_BACKUP_S3_SECRET_KEY:-${RUSTFS_SECRET_KEY}}
+      BEEFY_HISTORY_S3_EVENTS_URL: ${BEEFY_HISTORY_S3_EVENTS_URL:-http://rustfs:9000/beefy-history/current/events.parquet}
+      BEEFY_HISTORY_S3_ISSUES_URL: ${BEEFY_HISTORY_S3_ISSUES_URL:-http://rustfs:9000/beefy-history/current/issues.parquet}
       DBT_CLICKHOUSE_PASSWORD: ${DBT_CLICKHOUSE_PASSWORD}
       DBT_CLICKHOUSE_ALLOWED_HOST: IP '172.19.1.0/24'
       DLT_CLICKHOUSE_PASSWORD: ${DLT_CLICKHOUSE_PASSWORD}
@@ -316,6 +318,7 @@ services:
       RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY:-admin}
       RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY}
       RUSTFS_CLICKHOUSE_BACKUP_BUCKET: ${CLICKHOUSE_BACKUP_S3_BUCKET:-clickhouse-backups}
+      RUSTFS_BEEFY_HISTORY_BUCKET: ${BEEFY_HISTORY_S3_BUCKET:-beefy-history}
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
@@ -324,7 +327,9 @@ services:
         mc alias set rustfs http://rustfs:9000 "$${RUSTFS_ACCESS_KEY}" "$${RUSTFS_SECRET_KEY}"
         echo "Creating bucket $${RUSTFS_CLICKHOUSE_BACKUP_BUCKET}..."
         mc mb rustfs/$${RUSTFS_CLICKHOUSE_BACKUP_BUCKET} || true
-        echo "Bucket ready."
+        echo "Creating bucket $${RUSTFS_BEEFY_HISTORY_BUCKET}..."
+        mc mb rustfs/$${RUSTFS_BEEFY_HISTORY_BUCKET} || true
+        echo "Buckets ready."
     networks:
       - backend_network
     depends_on:
@@ -585,9 +590,17 @@ services:
       - ../../dlt:/app/dlt
       # DLT writes pipeline data (load/loaded/completed_jobs) to /var/dlt – mount volume so it does not fill the container overlay
       - dlt_data:/var/dlt
+      # Git mirrors + local parquet store for the beefy-history CLI (not the ClickHouse backup volume)
+      - beefy_history_data:/var/beefy-history
     environment:
       DLT_ENV: ${DLT_ENV:-production}
       STORAGE_DIR: ${STORAGE_DIR}
+      BEEFY_HISTORY_DIR: /opt/beefy-history
+      BEEFY_HISTORY_DATA_DIR: /var/beefy-history
+      BEEFY_HISTORY_S3_ENDPOINT: ${BEEFY_HISTORY_S3_ENDPOINT:-http://rustfs:9000}
+      BEEFY_HISTORY_S3_BUCKET: ${BEEFY_HISTORY_S3_BUCKET:-beefy-history}
+      BEEFY_HISTORY_S3_ACCESS_KEY: ${BEEFY_HISTORY_S3_ACCESS_KEY:-${CLICKHOUSE_BACKUP_S3_ACCESS_KEY:-${RUSTFS_ACCESS_KEY:-admin}}}
+      BEEFY_HISTORY_S3_SECRET_KEY: ${BEEFY_HISTORY_S3_SECRET_KEY:-${CLICKHOUSE_BACKUP_S3_SECRET_KEY:-${RUSTFS_SECRET_KEY}}}
       # ClickHouse configuration
       DLT_CLICKHOUSE_HOST: ${DLT_CLICKHOUSE_HOST:-clickhouse}
       DLT_CLICKHOUSE_PORT: ${DLT_CLICKHOUSE_PORT:-9000}
@@ -616,6 +629,8 @@ services:
       - "traefik.enable=false"
     depends_on:
       clickhouse:
+        condition: service_healthy
+      rustfs:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "pgrep -f 'scheduler.py' > /dev/null && exit 0 || exit 1"]
@@ -741,6 +756,12 @@ volumes:
       type: none
       o: bind
       device: ${STORAGE_DIR}/dlt
+  beefy_history_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${STORAGE_DIR}/beefy-history
 
 networks:
   frontend_network:

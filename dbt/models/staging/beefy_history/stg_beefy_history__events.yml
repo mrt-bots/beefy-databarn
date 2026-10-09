@@ -1,0 +1,97 @@
+version: 2
+
+models:
+  - name: stg_beefy_history__events
+    description: >
+      MergeTree copy of beefy-history `current/events.parquet` (RustFS named collection
+      `beefy_history_s3_events`). One row per catalog change. `data` is canonical JSON text
+      (not a nested parquet struct). `objects` is not a file — see stg_beefy_history__objects.
+      Identity is chain + contract address (`object_id` = kind:chain:address), not beefy_key.
+    config:
+      meta:
+        primary_key: ["seq"]
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - seq
+    columns:
+      - name: seq
+        description: "Global monotonic event sequence from the CLI store"
+        tests:
+          - not_null
+          - unique
+      - name: object_id
+        description: "kind:chain:address"
+        tests:
+          - not_null
+      - name: kind
+        description: "vault or boost"
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['vault', 'boost']
+      - name: chain
+        description: "Normalized chain id (e.g. avax, not avalanche)"
+        tests:
+          - not_null
+      - name: beefy_id
+        description: "Config id at this snapshot (can rename, e.g. X → X-eol)"
+        tests:
+          - not_null
+      - name: address
+        description: "Contract address that identifies the object"
+        tests:
+          - not_null
+      - name: change_type
+        description: "added | changed | removed | readded (not the vault config type)"
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['added', 'changed', 'removed', 'readded']
+      - name: source
+        description: "Repo whose snapshot won (beefy-app or beefy-v2)"
+      - name: commit_repo
+        description: "Repo of the commit that produced this event"
+      - name: commit_sha
+        description: "Commit SHA"
+      - name: committed_at
+        description: "Committer unix seconds"
+        tests:
+          - not_null
+      - name: committed_at_ts
+        description: "committed_at as DateTime64 UTC"
+      - name: authored_at
+        description: "Author unix seconds"
+      - name: authored_at_ts
+        description: "authored_at as DateTime64 UTC"
+      - name: commit_subject
+        description: "Commit subject"
+      - name: path
+        description: "Config file path; null when removed"
+      - name: data
+        description: "Canonical JSON of the full config; null when removed"
+      - name: data_hash
+        description: "sha256 hex of data; null when removed"
+      - name: reason
+        description: "source-switch | layer-switch | source-retired | address-change"
+      - name: changed_keys
+        description: "Top-level config keys that changed (empty/[] unless change_type = changed)"
+      - name: status
+        description: "data.status. Null if missing, JSON null, or empty (empty counts as active)"
+      - name: config_type
+        description: "data.type (standard | gov | cowcentrated | erc4626 when present)"
+      - name: is_gov_vault
+        description: "data.isGovVault is true"
+      - name: platform_id
+        description: "data.platformId"
+      - name: token_provider_id
+        description: "data.tokenProviderId (CLM DEX)"
+      - name: retire_reason
+        description: "data.retireReason"
+      - name: token_address
+        description: "data.tokenAddress, lowercased"
+      - name: earn_contract_address
+        description: "data.earnContractAddress, lowercased"

@@ -1,0 +1,64 @@
+version: 2
+
+models:
+  - name: int_beefy_history__event_windows
+    description: >
+      Catalog membership and observed status over time. Grain is one row per event: valid from
+      that commit until the next event on the same object (valid_to is null for the current row).
+      Query "in catalog at T" with valid_from <= T and (valid_to is null or T < valid_to) and in_catalog.
+    config:
+      meta:
+        primary_key: ["object_id", "seq"]
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - object_id
+              - seq
+    columns:
+      - name: object_id
+        description: "kind:chain:address"
+        tests:
+          - not_null
+      - name: kind
+        description: "vault or boost"
+      - name: chain
+        description: "Normalized chain id"
+      - name: address
+        description: "Contract address"
+      - name: seq
+        description: "Event sequence"
+        tests:
+          - not_null
+      - name: change_type
+        description: "added | changed | removed | readded"
+      - name: committed_at
+        description: "Committer unix seconds"
+      - name: valid_from
+        description: "Inclusive start of this snapshot"
+      - name: valid_to_unix
+        description: "Exclusive end as committer unix seconds; null if this is the latest event"
+      - name: valid_to
+        description: "Exclusive end (next event); null if this is the latest event"
+      - name: in_catalog
+        description: "change_type is not removed"
+      - name: status
+        description: "Raw observed status (null = missing/empty)"
+      - name: is_active
+        description: "In catalog and status is null or active (empty counts as active)"
+      - name: config_type
+        description: "data.type"
+      - name: is_gov_vault
+        description: "data.isGovVault"
+      - name: vault_type
+        description: "Resolved standard | gov | cowcentrated | erc4626"
+      - name: platform_id
+        description: "data.platformId"
+      - name: token_provider_id
+        description: "data.tokenProviderId"
+      - name: retire_reason
+        description: "data.retireReason"
+      - name: token_address
+        description: "Deposit token"
+      - name: earn_contract_address
+        description: "Earn contract from config JSON"

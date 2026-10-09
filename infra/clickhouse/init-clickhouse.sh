@@ -181,6 +181,10 @@ clickhouse-client \
     GRANT ${READ_PERM}, ${WRITE_PERM} ON dbt.*                      TO dbt;
     GRANT ${READ_PERM}, ${WRITE_PERM} ON analytics.*                TO dbt;
     GRANT ${READ_PERM}, ${WRITE_PERM}, CREATE DATABASE ON dbt_test__audit.* TO dbt;
+    -- Copy beefy-history parquet from RustFS via s3() named collections (not the backup bucket).
+    GRANT S3 ON *.* TO dbt;
+    GRANT NAMED COLLECTION ON beefy_history_s3_events TO dbt;
+    GRANT NAMED COLLECTION ON beefy_history_s3_issues TO dbt;
 
     -- grafana: R on warehouse + project DBs
     REVOKE ALL PRIVILEGES ON dlt.*           FROM grafana;

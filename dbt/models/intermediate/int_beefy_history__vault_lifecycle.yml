@@ -1,0 +1,92 @@
+version: 2
+
+models:
+  - name: int_beefy_history__vault_lifecycle
+    description: >
+      Per-vault launch, retirement, catalog membership, and CLM parent. Launch is the first
+      in-catalog active observation (not createdAt / on-chain init). Retirement is the end of
+      the last active period when the vault is not active now and not paused. cowcentrated
+      vaults count once (`counts_for_stats`); their gov/standard wrappers on the same chain
+      whose deposit token is the CLM are `is_clm_wrapper`. Platform is platformId except CLM
+      uses tokenProviderId. Boosts are omitted. `chain_id` joins `product` / `chain`;
+      `platform` joins `platform.platform_id`; `token_address` joins `token`.
+    config:
+      meta:
+        primary_key: ["object_id"]
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - object_id
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - chain
+              - address
+    columns:
+      - name: object_id
+        description: "vault:chain:address"
+        tests:
+          - not_null
+          - unique
+      - name: chain_id
+        description: "FK to chain / product. Null if the history chain key is not in int_chain_keys."
+        tests:
+          - relationships:
+              config:
+                where: "chain_id is not null"
+              arguments:
+                to: ref('chain')
+                field: chain_id
+      - name: chain
+        description: "History chain key (e.g. bsc)"
+        tests:
+          - not_null
+      - name: address
+        description: "Vault contract address (join product.product_address)"
+        tests:
+          - not_null
+        meta:
+          docglow:
+            relationships:
+              - to: product
+                field: product_address
+                kind: one_to_many
+      - name: in_catalog
+        description: "Latest event is not removed"
+      - name: observed_status
+        description: "Latest snapshot status (null = missing/empty = active)"
+      - name: vault_type
+        description: "standard | gov | cowcentrated | erc4626"
+      - name: platform
+        description: "platformId, or tokenProviderId for cowcentrated (join platform.platform_id)"
+      - name: platform_id
+        description: "Latest data.platformId"
+      - name: retire_reason_group
+        description: "rewards | tvl | upgrade | incident | other | none"
+      - name: launch_quarter
+        description: "YYYY-Qn of first in-catalog active observation"
+      - name: retirement_quarter
+        description: "YYYY-Qn of last active period end when retired"
+      - name: lifespan_months
+        description: "Whole 30.4375-day months from launch to retirement; null if not retired"
+      - name: token_provider_id
+        description: "Latest data.tokenProviderId"
+      - name: token_address
+        description: "Latest deposit token"
+      - name: retire_reason
+        description: "Latest data.retireReason"
+      - name: first_active_at
+        description: "Launch: first in-catalog active observation"
+      - name: last_active_end_at
+        description: "End of last active period; null if still active"
+      - name: is_paused
+        description: "Currently in catalog with status paused"
+      - name: is_retired
+        description: "Has an ended last active period and is not paused"
+      - name: clm_parent_address
+        description: "CLM address this gov/standard wraps, if any"
+      - name: is_clm_wrapper
+        description: "gov/standard whose deposit token is a cowcentrated vault on this chain"
+      - name: counts_for_stats
+        description: "Ever active and not a CLM wrapper (the vaults /stats would count)"

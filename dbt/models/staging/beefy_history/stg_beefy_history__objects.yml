@@ -1,0 +1,98 @@
+version: 2
+
+models:
+  - name: stg_beefy_history__objects
+    description: >
+      One row per catalog object (kind:chain:address), derived from events. The CLI's `objects`
+      view is DuckDB-only and is not published as parquet. `in_catalog` is last change_type <> removed.
+      Includes objects later deleted and eol vaults on dead chains the Beefy API drops.
+    config:
+      meta:
+        primary_key: ["object_id"]
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - object_id
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - kind
+              - chain
+              - address
+    columns:
+      - name: object_id
+        description: "kind:chain:address"
+        tests:
+          - not_null
+          - unique
+      - name: kind
+        description: "vault or boost"
+        tests:
+          - not_null
+      - name: chain
+        description: "Normalized chain id"
+        tests:
+          - not_null
+      - name: address
+        description: "Contract address"
+        tests:
+          - not_null
+      - name: beefy_id
+        description: "Latest config id"
+      - name: beefy_ids
+        description: "Every id this object has had, first-seen order"
+      - name: first_seq
+        description: "First event seq"
+      - name: last_seq
+        description: "Last event seq"
+      - name: first_committed_at
+        description: "First event committer unix seconds"
+      - name: first_committed_at_ts
+        description: "First event as DateTime64 UTC"
+      - name: last_committed_at
+        description: "Last event committer unix seconds"
+      - name: last_committed_at_ts
+        description: "Last event as DateTime64 UTC"
+      - name: last_change_type
+        description: "Type of the latest event"
+      - name: in_catalog
+        description: "Latest change_type is not removed"
+      - name: event_count
+        description: "Number of events"
+      - name: data
+        description: "Latest non-null config JSON"
+      - name: status
+        description: "Latest snapshot status"
+      - name: config_type
+        description: "Latest data.type"
+      - name: is_gov_vault
+        description: "Latest data.isGovVault"
+      - name: platform_id
+        description: "Latest data.platformId"
+      - name: token_provider_id
+        description: "Latest data.tokenProviderId"
+      - name: retire_reason
+        description: "Latest data.retireReason"
+      - name: token_address
+        description: "Latest data.tokenAddress"
+      - name: earn_contract_address
+        description: "Latest data.earnContractAddress"
+      - name: vault_type
+        description: "config_type, else gov if is_gov_vault, else standard"
+      - name: name
+        description: "data.name, or data.title for promos boosts"
+      - name: title
+        description: "data.title"
+      - name: assets
+        description: "data.assets; empty when absent"
+      - name: earned_token_address
+        description: "data.earnedTokenAddress, lowercased"
+      - name: earned_token_addresses
+        description: "earnedTokenAddress(es) and promos rewards[].address, lowercased and deduped"
+      - name: source
+        description: "Repo of the latest snapshot (or last event when none)"
+      - name: path
+        description: "Config file of the latest snapshot; null when removed"
+      - name: config_layer
+        description: "vault | stake | boost | promos from path; null when unknown/removed"

@@ -43,6 +43,8 @@ services:
       CLICKHOUSE_BACKUP_S3_DISK_ENDPOINT: ${CLICKHOUSE_BACKUP_S3_DISK_ENDPOINT:-http://rustfs:9000/clickhouse-backups/}
       CLICKHOUSE_BACKUP_S3_ACCESS_KEY: ${CLICKHOUSE_BACKUP_S3_ACCESS_KEY:-${RUSTFS_ACCESS_KEY:-admin}}
       CLICKHOUSE_BACKUP_S3_SECRET_KEY: ${CLICKHOUSE_BACKUP_S3_SECRET_KEY:-${RUSTFS_SECRET_KEY}}
+      BEEFY_HISTORY_S3_EVENTS_URL: ${BEEFY_HISTORY_S3_EVENTS_URL:-http://rustfs:9000/beefy-history/current/events.parquet}
+      BEEFY_HISTORY_S3_ISSUES_URL: ${BEEFY_HISTORY_S3_ISSUES_URL:-http://rustfs:9000/beefy-history/current/issues.parquet}
       DBT_CLICKHOUSE_PASSWORD: ${DBT_CLICKHOUSE_PASSWORD}
       DBT_CLICKHOUSE_ALLOWED_HOST: ANY
       DLT_CLICKHOUSE_PASSWORD: ${DLT_CLICKHOUSE_PASSWORD}
@@ -246,6 +248,7 @@ services:
       RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY:-admin}
       RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY}
       RUSTFS_CLICKHOUSE_BACKUP_BUCKET: ${CLICKHOUSE_BACKUP_S3_BUCKET:-clickhouse-backups}
+      RUSTFS_BEEFY_HISTORY_BUCKET: ${BEEFY_HISTORY_S3_BUCKET:-beefy-history}
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
@@ -254,7 +257,9 @@ services:
         mc alias set rustfs http://rustfs:9000 "$${RUSTFS_ACCESS_KEY}" "$${RUSTFS_SECRET_KEY}"
         echo "Creating bucket $${RUSTFS_CLICKHOUSE_BACKUP_BUCKET}..."
         mc mb rustfs/$${RUSTFS_CLICKHOUSE_BACKUP_BUCKET} || true
-        echo "Bucket ready."
+        echo "Creating bucket $${RUSTFS_BEEFY_HISTORY_BUCKET}..."
+        mc mb rustfs/$${RUSTFS_BEEFY_HISTORY_BUCKET} || true
+        echo "Buckets ready."
     depends_on:
       rustfs:
         condition: service_healthy

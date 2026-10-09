@@ -1,0 +1,113 @@
+version: 2
+
+models:
+  - name: product_config_history
+    description: >
+      One row per catalog change. FKs are chain_id (chain), (chain_id, product_address)
+      (product), platform_id (platform), and token_representation_address (token).
+      product_type is null when the contract is not in the current product dimension.
+
+      Current snapshot: WHERE valid_to_unix IS NULL, then join product / chain / platform.
+      /changes: ORDER BY seq DESC
+      /o/[objectId]: WHERE object_id = … ORDER BY seq (prev_data for diffs)
+      /commits/[repo]/[sha]: WHERE commit_repo AND commit_sha; index = GROUP BY those
+      /inactive: WHERE valid_to_unix IS NULL AND NOT is_active
+      /stats active at T: WHERE counts_for_stats AND is_active
+        AND valid_from_unix <= T AND (valid_to_unix IS NULL OR T < valid_to_unix)
+      /stats launches / retirements / platforms / lifespan: WHERE valid_to_unix IS NULL
+        AND counts_for_stats, then GROUP BY launch_quarter, retirement_quarter, …
+    config:
+      meta:
+        primary_key: ["seq"]
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - seq
+    columns:
+      - name: seq
+        tests:
+          - not_null
+          - unique
+      - name: object_id
+        description: "kind:chain:address"
+        tests:
+          - not_null
+      - name: chain_id
+        description: "FK to chain. Null if the history chain key is not in int_chain_keys."
+        tests:
+          - relationships:
+              config:
+                where: "chain_id is not null"
+              arguments:
+                to: ref('chain')
+                field: chain_id
+      - name: chain_beefy_key
+        description: "History chain key (e.g. bsc), join chain.beefy_key if chain_id is null"
+      - name: product_address
+        description: "Contract address. Join product on (chain_id, product_address)."
+        tests:
+          - not_null
+        meta:
+          docglow:
+            relationships:
+              - to: product
+                field: product_address
+                kind: one_to_many
+      - name: product_type
+        description: "From product (classic_vault, clm_manager, classic_boost, reward_pool); null if unmatched"
+      - name: change_type
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['added', 'changed', 'removed', 'readded']
+      - name: commit_repo
+        tests:
+          - not_null
+      - name: commit_sha
+        tests:
+          - not_null
+      - name: committed_at
+        tests:
+          - not_null
+      - name: commit_url
+        description: "https://github.com/beefyfinance/<repo>/commit/<sha>"
+      - name: file_url
+        description: "Blob URL; null when removed or the snapshot came from the other repo"
+      - name: platform_id
+        description: "Event-time data.platformId. Join platform.platform_id."
+        tests:
+          - relationships:
+              config:
+                where: "platform_id is not null"
+                severity: warn
+              arguments:
+                to: ref('platform')
+                field: platform_id
+      - name: stats_platform
+        description: "platformId, or tokenProviderId for CLM; join platform"
+      - name: token_representation_address
+        description: "Event-time deposit token. Join token on (chain_id, representation_address)."
+        meta:
+          docglow:
+            relationships:
+              - to: token
+                field: representation_address
+                kind: one_to_many
+      - name: vault_type
+        description: "Resolved standard | gov | cowcentrated | erc4626 for this snapshot"
+      - name: is_active
+        description: "This snapshot is in catalog with missing/empty/active status"
+      - name: valid_from_unix
+        description: "Inclusive start (same as committed_at)"
+      - name: valid_to_unix
+        description: "Exclusive end (next event); null if this is the latest event"
+      - name: counts_for_stats
+        description: "Object is a counted vault; null for boosts. Filter this for /stats series."
+      - name: changed_keys
+        description: "Top-level keys that changed; empty unless change_type = changed"
+      - name: prev_data
+        description: "Previous snapshot JSON; set only for changed"
+      - name: data
+        description: "Snapshot JSON; null when removed"

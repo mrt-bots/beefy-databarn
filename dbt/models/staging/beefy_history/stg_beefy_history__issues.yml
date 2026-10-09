@@ -1,0 +1,48 @@
+version: 2
+
+models:
+  - name: stg_beefy_history__issues
+    description: >
+      MergeTree copy of beefy-history `current/issues.parquet`. Data problems the CLI recorded
+      while walking git (parse-error, invalid-address, duplicates, ...). Not required for
+      catalog membership queries.
+    config:
+      meta:
+        primary_key: ["seq"]
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - seq
+    columns:
+      - name: seq
+        description: "Issue sequence (independent of event seq)"
+        tests:
+          - not_null
+          - unique
+      - name: issue_type
+        description: "parse-error | invalid-entry | invalid-address | duplicate-id | duplicate-address | chain-mismatch | source-retired | timeline-order | other"
+        tests:
+          - not_null
+      - name: repo
+        description: "beefy-app or beefy-v2"
+      - name: commit_sha
+        description: "Commit SHA"
+      - name: committed_at
+        description: "Committer unix seconds"
+      - name: committed_at_ts
+        description: "committed_at as DateTime64 UTC"
+      - name: path
+        description: "File path"
+      - name: kind
+        description: "vault or boost when known"
+      - name: chain
+        description: "Chain id when known"
+      - name: beefy_id
+        description: "Config id when known"
+      - name: message
+        description: "Human-readable issue"
+        tests:
+          - not_null
+      - name: details
+        description: "JSON extra details"

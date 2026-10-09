@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<clickhouse>
+    <!-- Catalog parquet on the dedicated beefy-history bucket (never clickhouse-backups).
+         Keys reuse the ClickHouse backup / RustFS credentials. dbt globs only current/. -->
+    <named_collections>
+        <beefy_history_s3_events>
+            <url from_env="BEEFY_HISTORY_S3_EVENTS_URL">http://rustfs:9000/beefy-history/current/events.parquet</url>
+            <access_key_id from_env="CLICKHOUSE_BACKUP_S3_ACCESS_KEY">admin</access_key_id>
+            <secret_access_key from_env="CLICKHOUSE_BACKUP_S3_SECRET_KEY"></secret_access_key>
+            <format>Parquet</format>
+        </beefy_history_s3_events>
+        <beefy_history_s3_issues>
+            <url from_env="BEEFY_HISTORY_S3_ISSUES_URL">http://rustfs:9000/beefy-history/current/issues.parquet</url>
+            <access_key_id from_env="CLICKHOUSE_BACKUP_S3_ACCESS_KEY">admin</access_key_id>
+            <secret_access_key from_env="CLICKHOUSE_BACKUP_S3_SECRET_KEY"></secret_access_key>
+            <format>Parquet</format>
+        </beefy_history_s3_issues>
+    </named_collections>
+</clickhouse>
